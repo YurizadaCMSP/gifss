@@ -1,0 +1,21 @@
+{
+  "name": "admin-panel",
+  "version": "1.0.0",
+  "description": "Admin panel for HouseCityRolePlay VPS",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "hash": "node -e \"const b=require('bcryptjs');b.hash(process.argv[1],12).then(console.log)\" "
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.3.1",
+    "express-session": "^1.18.0",
+    "helmet": "^7.1.0",
+    "pm2": "^5.4.2",
+    "winston": "^3.13.0",
+    "ws": "^8.17.1"
+  }
+}

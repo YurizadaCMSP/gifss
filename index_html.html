@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — Login</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg       : #0d0f14;
+    --surface  : #161923;
+    --border   : #252a38;
+    --accent   : #4f8ef7;
+    --accent-glow: rgba(79,142,247,.25);
+    --danger   : #e05c5c;
+    --text     : #e2e8f4;
+    --muted    : #6b7590;
+    --radius   : 12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(79,142,247,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,142,247,.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    animation: gridPan 20s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes gridPan { from { transform: translate(0,0); } to { transform: translate(48px,48px); } }
+
+  /* Glowing orb */
+  body::after {
+    content: '';
+    position: fixed;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(79,142,247,.12) 0%, transparent 70%);
+    top: -100px; left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .card {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 48px 44px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 32px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04) inset;
+    animation: slideUp .4s cubic-bezier(.22,1,.36,1);
+  }
+  @keyframes slideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:none; } }
+
+  .logo {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .logo-icon {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, #1e3a8a, #4f8ef7);
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 32px rgba(79,142,247,.4);
+  }
+  .logo h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -.02em; }
+  .logo p  { font-size: .82rem; color: var(--muted); margin-top: 4px; }
+
+  .field {
+    margin-bottom: 20px;
+  }
+  .field label {
+    display: block;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .field input {
+    width: 100%;
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 16px;
+    font-size: .95rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .field input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #2563eb, #4f8ef7);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .2s, opacity .2s;
+    position: relative;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(rgba(255,255,255,.15), transparent);
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(79,142,247,.45); }
+  .btn:hover::after { opacity: 1; }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+  .error-box {
+    background: rgba(224,92,92,.1);
+    border: 1px solid rgba(224,92,92,.3);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: .85rem;
+    color: var(--danger);
+    margin-top: 16px;
+    display: none;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .75rem;
+    color: var(--muted);
+    justify-content: center;
+    margin-top: 28px;
+  }
+  .badge span { color: #34d399; font-size: 10px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">🛡️</div>
+    <h1>Admin Panel</h1>
+    <p>HouseCityRolePlay Infrastructure</p>
+  </div>
+
+  <div class="field">
+    <label>Senha de Acesso</label>
+    <input type="password" id="pwd" placeholder="••••••••••••" autocomplete="current-password" autofocus>
+  </div>
+
+  <button class="btn" id="btnLogin">Entrar no Painel</button>
+  <div class="error-box" id="errBox"></div>
+
+  <div class="badge">
+    <span>●</span> Conexão segura via sessão autenticada
+  </div>
+</div>
+
+<script>
+  const btnLogin = document.getElementById('btnLogin');
+  const pwd      = document.getElementById('pwd');
+  const errBox   = document.getElementById('errBox');
+
+  // Check if already logged in
+  fetch('/api/check').then(r => r.json()).then(d => {
+    if (d.authenticated) location.href = '/dashboard';
+  });
+
+  async function login() {
+    const password = pwd.value.trim();
+    if (!password) return showError('Digite a senha.');
+
+    btnLogin.disabled = true;
+    btnLogin.innerHTML = '<span class="spinner"></span>Autenticando...';
+    errBox.style.display = 'none';
+
+    try {
+      const res  = await fetch('/api/login', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({ password }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.ok) {
+        btnLogin.innerHTML = '✓ Acesso autorizado — redirecionando...';
+        setTimeout(() => location.href = '/dashboard', 600);
+      } else {
+        showError(data.error || 'Credenciais inválidas.');
+        btnLogin.disabled = false;
+        btnLogin.textContent = 'Entrar no Painel';
+      }
+    } catch (e) {
+      showError('Erro de conexão com o servidor.');
+      btnLogin.disabled = false;
+      btnLogin.textContent = 'Entrar no Painel';
+    }
+  }
+
+  function showError(msg) {
+    errBox.textContent = '⚠ ' + msg;
+    errBox.style.display = 'block';
+    pwd.style.borderColor = 'var(--danger)';
+    setTimeout(() => { pwd.style.borderColor = ''; }, 2000);
+  }
+
+  btnLogin.addEventListener('click', login);
+  pwd.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+</script>
+</body>
+</html>

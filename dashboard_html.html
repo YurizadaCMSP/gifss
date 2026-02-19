@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   BASE & VARIABLES
+═══════════════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg       :#0a0c10;
+  --surface  :#111520;
+  --card     :#161b28;
+  --border   :#1f2537;
+  --border2  :#2a3147;
+  --accent   :#4f8ef7;
+  --accent2  :#7c66f5;
+  --success  :#34d399;
+  --warning  :#f59e0b;
+  --danger   :#ef4444;
+  --muted    :#5a6380;
+  --text     :#dde4f2;
+  --text2    :#8b94b0;
+  --radius   :12px;
+  --shadow   :0 4px 24px rgba(0,0,0,.45);
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Inter','Segoe UI',system-ui,sans-serif;font-size:14px;display:flex;flex-direction:column}
+
+/* scrollbar */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+/* ═══ TOPBAR ═════════════════════════════════════════════ */
+.topbar{
+  display:flex;align-items:center;gap:12px;
+  padding:0 24px;height:56px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;z-index:100;
+}
+.topbar .logo{font-weight:700;font-size:.95rem;display:flex;align-items:center;gap:8px}
+.topbar .logo .icon{background:linear-gradient(135deg,#1e3a8a,#4f8ef7);border-radius:8px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:16px}
+.ws-dot{width:8px;height:8px;border-radius:50%;background:var(--danger);transition:background .3s}
+.ws-dot.connected{background:var(--success)}
+.ws-label{font-size:.78rem;color:var(--text2)}
+.btn-sm{padding:6px 14px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:.8rem;cursor:pointer;transition:all .2s}
+.btn-sm:hover{background:var(--border);color:var(--text)}
+
+/* ═══ LAYOUT ════════════════════════════════════════════ */
+.layout{display:flex;flex:1;overflow:hidden}
+.sidebar{
+  width:200px;flex-shrink:0;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  padding:12px 8px;
+  display:flex;flex-direction:column;gap:2px;
+  overflow-y:auto;
+}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:8px;
+  cursor:pointer;font-size:.85rem;color:var(--text2);
+  transition:all .15s;user-select:none;
+}
+.nav-item:hover{background:var(--border);color:var(--text)}
+.nav-item.active{background:rgba(79,142,247,.15);color:var(--accent);font-weight:600}
+.nav-icon{font-size:1rem;width:20px;text-align:center}
+
+.main{flex:1;overflow:auto;padding:20px}
+
+/* ═══ PANELS ════════════════════════════════════════════ */
+.panel{display:none}
+.panel.active{display:block}
+
+/* ═══ CARDS ════════════════════════════════════════════ */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:18px;
+}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-title{font-size:.88rem;font-weight:600;color:var(--text2);letter-spacing:.04em;text-transform:uppercase}
+.card-value{font-size:1.9rem;font-weight:700;line-height:1.1;margin-bottom:4px}
+.card-sub{font-size:.78rem;color:var(--muted)}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+@media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(2,1fr)}}
+
+/* ═══ GAUGES ════════════════════════════════════════════ */
+.gauge-ring{position:relative;width:64px;height:64px;flex-shrink:0}
+.gauge-ring svg{transform:rotate(-90deg)}
+.gauge-ring .ring-bg{fill:none;stroke:var(--border);stroke-width:6}
+.gauge-ring .ring-fg{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .6s ease;stroke-dasharray:175.9}
+.gauge-inner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700}
+
+.stat-card{display:flex;align-items:center;gap:14px}
+.stat-info{flex:1;min-width:0}
+.stat-info .label{font-size:.75rem;color:var(--muted);margin-bottom:3px}
+.stat-info .val{font-size:1.3rem;font-weight:700}
+.stat-info .sub{font-size:.73rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ═══ PROGRESS BAR ══════════════════════════════════════ */
+.progress{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:6px}
+.progress-bar{height:100%;border-radius:3px;transition:width .6s ease}
+.progress-bar.ok   {background:var(--success)}
+.progress-bar.warn {background:var(--warning)}
+.progress-bar.crit {background:var(--danger)}
+
+/* ═══ CHARTS ════════════════════════════════════════════ */
+.chart-wrap{position:relative;height:160px}
+
+/* ═══ TABLE ══════════════════════════════════════════════ */
+.pm2-table{width:100%;border-collapse:collapse}
+.pm2-table th{text-align:left;padding:8px 10px;font-size:.75rem;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.pm2-table td{padding:10px 10px;border-bottom:1px solid var(--border);font-size:.84rem;vertical-align:middle}
+.pm2-table tr:last-child td{border:none}
+.pm2-table tr:hover td{background:rgba(255,255,255,.02)}
+
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:.73rem;font-weight:600}
+.badge.online {background:rgba(52,211,153,.15);color:var(--success)}
+.badge.stopped{background:rgba(239,68,68,.12);color:var(--danger)}
+.badge.errored{background:rgba(239,68,68,.18);color:var(--danger)}
+.badge.cluster{background:rgba(79,142,247,.15);color:var(--accent)}
+
+.action-btns{display:flex;gap:6px}
+.btn-action{
+  padding:4px 10px;border-radius:6px;border:1px solid var(--border2);
+  background:transparent;color:var(--text2);font-size:.75rem;cursor:pointer;transition:all .15s;
+}
+.btn-action:hover{background:var(--border);color:var(--text)}
+.btn-action.danger:hover{background:rgba(239,68,68,.15);color:var(--danger);border-color:var(--danger)}
+.btn-action.success:hover{background:rgba(52,211,153,.12);color:var(--success);border-color:var(--success)}
+
+/* ═══ MEM BAR IN TABLE ══════════════════════════════════ */
+.mem-bar-wrap{width:80px}
+
+/* ═══ LOGS ═══════════════════════════════════════════════ */
+.log-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.tab-btn{padding:6px 14px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:.8rem;cursor:pointer;transition:all .15s}
+.tab-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.log-box{
+  background:#08090d;border:1px solid var(--border);border-radius:8px;
+  padding:14px;font-family:'Fira Code','JetBrains Mono',monospace;font-size:.77rem;
+  height:400px;overflow-y:auto;color:#a5b4d4;line-height:1.7;
+}
+.log-line.ERROR {color:#f87171}
+.log-line.WARN  {color:var(--warning)}
+.log-line.INFO  {color:#6ee7b7}
+
+/* ═══ FILE EDITOR ═══════════════════════════════════════ */
+.editor-layout{display:grid;grid-template-columns:240px 1fr;gap:14px}
+.file-tree{overflow-y:auto;max-height:560px}
+.tree-item{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 8px 5px calc(var(--depth,0) * 14px + 8px);
+  border-radius:6px;cursor:pointer;font-size:.82rem;
+  transition:background .12s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.tree-item:hover{background:var(--border)}
+.tree-item.selected{background:rgba(79,142,247,.18);color:var(--accent)}
+.tree-item .ico{font-size:.85rem}
+.editor-area{display:flex;flex-direction:column;gap:10px}
+.editor-meta{font-size:.78rem;color:var(--muted);padding:6px 0}
+textarea#codeEditor{
+  flex:1;width:100%;min-height:440px;resize:vertical;
+  background:#08090d;border:1px solid var(--border);border-radius:8px;
+  color:#c9d9ff;font-family:'Fira Code','JetBrains Mono',monospace;font-size:.82rem;
+  padding:14px;outline:none;line-height:1.6;
+  transition:border-color .2s;
+}
+textarea#codeEditor:focus{border-color:var(--accent)}
+.editor-toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.btn-primary{
+  padding:8px 18px;border-radius:8px;
+  background:linear-gradient(135deg,#2563eb,var(--accent));
+  border:none;color:#fff;font-size:.84rem;font-weight:600;cursor:pointer;
+  transition:transform .15s,box-shadow .2s;
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,142,247,.4)}
+
+/* ═══ GIT TERMINAL ══════════════════════════════════════ */
+.terminal{
+  background:#05070b;border:1px solid var(--border);border-radius:8px;
+  padding:16px;font-family:'Fira Code','JetBrains Mono',monospace;font-size:.8rem;
+  min-height:220px;max-height:400px;overflow-y:auto;color:#6ee7b7;line-height:1.8;
+}
+.terminal .t-error{color:#f87171}
+.terminal .t-warn {color:var(--warning)}
+.terminal .t-done {color:var(--accent);font-weight:700}
+
+/* ═══ ALERTS TOAST ══════════════════════════════════════ */
+#alerts{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{
+  padding:12px 18px;border-radius:10px;font-size:.83rem;font-weight:500;
+  animation:toastIn .25s ease;max-width:360px;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);
+}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:none}}
+.toast.warning{background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4);color:#fcd34d}
+.toast.info{background:rgba(79,142,247,.15);border:1px solid rgba(79,142,247,.4);color:var(--accent)}
+.toast.danger{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#f87171}
+
+/* ═══ SECTION TITLE ═════════════════════════════════════ */
+.section-title{font-size:1rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.section-title .dot{width:4px;height:20px;background:var(--accent);border-radius:2px;display:inline-block}
+
+/* ═══ LOADING ═══════════════════════════════════════════ */
+.skeleton{background:linear-gradient(90deg,var(--border) 25%,var(--border2) 50%,var(--border) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px}
+@keyframes shimmer{0%{background-position:200% 0} 100%{background-position:-200% 0}}
+
+/* refresh spin on reload btn */
+.spin{animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════ TOPBAR -->
+<header class="topbar">
+  <div class="logo"><div class="icon">🛡️</div>Admin Panel</div>
+  <span style="color:var(--muted);font-size:.75rem">HouseCityRolePlay Infrastructure</span>
+  <div class="topbar-right">
+    <div id="wsDot" class="ws-dot"></div>
+    <span class="ws-label" id="wsLabel">Conectando...</span>
+    <span style="font-size:.78rem;color:var(--muted)" id="clock"></span>
+    <button class="btn-sm" onclick="logout()">Sair</button>
+  </div>
+</header>
+
+<div class="layout">
+<!-- ══════════════════════════════════════════ SIDEBAR -->
+<nav class="sidebar">
+  <div class="nav-item active" data-panel="overview" onclick="showPanel(this)">
+    <span class="nav-icon">📊</span>Overview
+  </div>
+  <div class="nav-item" data-panel="pm2" onclick="showPanel(this)">
+    <span class="nav-icon">⚙️</span>PM2 Manager
+  </div>
+  <div class="nav-item" data-panel="logs" onclick="showPanel(this)">
+    <span class="nav-icon">📋</span>Logs
+  </div>
+  <div class="nav-item" data-panel="editor" onclick="showPanel(this)">
+    <span class="nav-icon">📝</span>Editor
+  </div>
+  <div class="nav-item" data-panel="deploy" onclick="showPanel(this)">
+    <span class="nav-icon">🚀</span>Deploy / Git
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════ MAIN CONTENT -->
+<main class="main">
+
+<!-- ━━━━━ OVERVIEW ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div id="panel-overview" class="panel active">
+  <div class="section-title"><span class="dot"></span>Sistema em Tempo Real</div>
+
+  <!-- Stat cards row -->
+  <div class="grid-4">
+    <!-- CPU -->
+    <div class="card stat-card">
+      <div class="gauge-ring">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle class="ring-bg" cx="32" cy="32" r="28"/>
+          <circle id="cpuRing" class="ring-fg" cx="32" cy="32" r="28" stroke="#4f8ef7" stroke-dashoffset="175.9"/>
+        </svg>
+        <div class="gauge-inner" id="cpuPct">0%</div>
+      </div>
+      <div class="stat-info">
+        <div class="label">CPU Usage</div>
+        <div class="val" id="cpuVal">—</div>
+        <div class="sub" id="cpuLoad">Load: —</div>
+      </div>
+    </div>
+    <!-- RAM -->
+    <div class="card stat-card">
+      <div class="gauge-ring">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle class="ring-bg" cx="32" cy="32" r="28"/>
+          <circle id="ramRing" class="ring-fg" cx="32" cy="32" r="28" stroke="#7c66f5" stroke-dashoffset="175.9"/>
+        </svg>
+        <div class="gauge-inner" id="ramPct">0%</div>
+      </div>
+      <div class="stat-info">
+        <div class="label">RAM Usage</div>
+        <div class="val" id="ramVal">—</div>
+        <div class="sub" id="ramSub">— free</div>
+      </div>
+    </div>
+    <!-- DISK -->
+    <div class="card stat-card">
+      <div class="gauge-ring">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle class="ring-bg" cx="32" cy="32" r="28"/>
+          <circle id="diskRing" class="ring-fg" cx="32" cy="32" r="28" stroke="#34d399" stroke-dashoffset="175.9"/>
+        </svg>
+        <div class="gauge-inner" id="diskPct">0%</div>
+      </div>
+      <div class="stat-info">
+        <div class="label">Disco (  /  )</div>
+        <div class="val" id="diskVal">—</div>
+        <div class="sub" id="diskSub">— free</div>
+      </div>
+    </div>
+    <!-- UPTIME -->
+    <div class="card stat-card">
+      <div style="font-size:2rem;width:64px;text-align:center">⏱️</div>
+      <div class="stat-info">
+        <div class="label">Uptime do Sistema</div>
+        <div class="val" id="uptimeVal">—</div>
+        <div class="sub" id="eldVal">ELD: — ms</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><span class="card-title">CPU (últimos 60s)</span></div>
+      <div class="chart-wrap"><canvas id="cpuChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">RAM (últimos 60s)</span></div>
+      <div class="chart-wrap"><canvas id="ramChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Process mini-list -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Processos PM2</span>
+      <button class="btn-sm" onclick="loadPM2()">↻ Atualizar</button>
+    </div>
+    <table class="pm2-table" id="overviewPm2">
+      <thead><tr>
+        <th>Nome</th><th>Status</th><th>CPU</th><th>Memória</th><th>Restarts</th><th>Uptime</th>
+      </tr></thead>
+      <tbody id="overviewPm2Body">
+        <tr><td colspan="6" style="color:var(--muted);padding:20px;text-align:center">Carregando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ━━━━━ PM2 MANAGER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div id="panel-pm2" class="panel">
+  <div class="section-title"><span class="dot"></span>PM2 Process Manager</div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Processos</span>
+      <button class="btn-sm" onclick="loadPM2()">↻ Atualizar</button>
+    </div>
+    <table class="pm2-table" id="pm2Table">
+      <thead><tr>
+        <th>#</th><th>Nome</th><th>Status</th><th>Mode</th>
+        <th>CPU</th><th>Memória</th><th>Restarts</th><th>Uptime</th>
+        <th>Ações</th>
+      </tr></thead>
+      <tbody id="pm2Body">
+        <tr><td colspan="9" style="color:var(--muted);padding:20px;text-align:center">Carregando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- PM2 Log Stream -->
+  <div class="card" style="margin-top:14px">
+    <div class="card-header">
+      <span class="card-title">Log em Tempo Real</span>
+      <div style="display:flex;gap:8px">
+        <input id="logProcessName" placeholder="Nome do processo" style="
+          background:var(--bg);border:1px solid var(--border);border-radius:6px;
+          padding:4px 10px;color:var(--text);font-size:.8rem;outline:none">
+        <button class="btn-sm" onclick="subscribeLog()">▶ Iniciar</button>
+        <button class="btn-sm" onclick="clearLog()">🗑 Limpar</button>
+      </div>
+    </div>
+    <div class="log-box" id="pm2LogBox" style="height:260px"></div>
+  </div>
+</div>
+
+<!-- ━━━━━ LOGS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div id="panel-logs" class="panel">
+  <div class="section-title"><span class="dot"></span>Logs do Sistema</div>
+  <div class="card">
+    <div class="log-toolbar">
+      <button class="tab-btn active" onclick="loadLog('acesso',this)">🌐 Acesso</button>
+      <button class="tab-btn" onclick="loadLog('error',this)">🔴 Erros</button>
+      <button class="tab-btn" onclick="loadLog('actions',this)">⚡ Ações</button>
+      <button class="btn-sm" style="margin-left:auto" onclick="reloadCurrentLog()">↻ Atualizar</button>
+      <button class="btn-sm" onclick="clearLogBox()">🗑 Limpar tela</button>
+    </div>
+    <div class="log-box" id="logBox"></div>
+  </div>
+</div>
+
+<!-- ━━━━━ FILE EDITOR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div id="panel-editor" class="panel">
+  <div class="section-title"><span class="dot"></span>Editor de Arquivos</div>
+  <div class="editor-layout">
+    <!-- File tree -->
+    <div class="card file-tree" id="fileTree">
+      <div class="card-header" style="margin-bottom:10px">
+        <span class="card-title">Arquivos</span>
+        <button class="btn-sm" onclick="loadTree()">↻</button>
+      </div>
+      <div id="treeContent" style="color:var(--muted);font-size:.82rem">Carregando...</div>
+    </div>
+    <!-- Editor -->
+    <div class="card editor-area">
+      <div class="editor-meta" id="editorMeta">Selecione um arquivo na árvore →</div>
+      <textarea id="codeEditor" placeholder="// Selecione um arquivo para editar..."></textarea>
+      <div class="editor-toolbar">
+        <button class="btn-primary" onclick="saveFile()">💾 Salvar</button>
+        <button class="btn-sm" onclick="reloadFile()">↻ Recarregar</button>
+        <span id="saveStatus" style="font-size:.8rem;color:var(--muted);margin-left:auto;align-self:center"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ━━━━━ DEPLOY / GIT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div id="panel-deploy" class="panel">
+  <div class="section-title"><span class="dot"></span>Deploy & Git</div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-header">
+      <span class="card-title">Git Pull + PM2 Restart</span>
+    </div>
+    <p style="color:var(--text2);font-size:.84rem;margin-bottom:14px">
+      Executa <code style="background:var(--border);padding:2px 6px;border-radius:4px">git pull</code> no diretório do bot e reinicia via PM2 automaticamente.
+    </p>
+    <button class="btn-primary" id="btnGitPull" onclick="gitPull()">🚀 Executar Git Pull</button>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Terminal Output</span>
+      <button class="btn-sm" onclick="document.getElementById('terminal').innerHTML=''">🗑 Limpar</button>
+    </div>
+    <div class="terminal" id="terminal">
+      <span style="color:var(--muted)">// Saída do terminal aparecerá aqui...</span>
+    </div>
+  </div>
+</div>
+
+</main>
+</div><!-- .layout -->
+
+<!-- Alerts container -->
+<div id="alerts"></div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   GLOBAL STATE
+════════════════════════════════════════════════════════════ */
+const MAX_POINTS = 30;
+const cpuHistory  = Array(MAX_POINTS).fill(0);
+const ramHistory  = Array(MAX_POINTS).fill(0);
+const timeLabels  = Array(MAX_POINTS).fill('');
+let   ws          = null;
+let   wsRetry     = 1000;
+let   currentFile = null;
+let   currentLog  = 'acesso';
+let   pm2Data     = [];
+
+/* ════════════════════════════════════════════════════════════
+   UTILS
+════════════════════════════════════════════════════════════ */
+const fmt = {
+  bytes(b){ if(b==null) return '—'; const u=['B','KB','MB','GB']; let i=0; while(b>=1024&&i<3){b/=1024;i++;} return b.toFixed(i?1:0)+' '+u[i]; },
+  pct  (p){ return Math.round(p||0)+'%'; },
+  time (s){ const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60); return d?`${d}d ${h}h`:h?`${h}h ${m}m`:`${m}m`; },
+  date ()  { return new Date().toLocaleTimeString('pt-BR'); },
+};
+
+function setRing(id, pct){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const r = 28, circ = 2*Math.PI*r;
+  el.style.strokeDashoffset = circ - (circ * Math.min(pct,100) / 100);
+}
+
+function clampColor(pct){ return pct>=90?'var(--danger)':pct>=70?'var(--warning)':''; }
+
+function notify(msg, level='info'){
+  const d = document.createElement('div');
+  d.className = `toast ${level}`;
+  d.textContent = msg;
+  document.getElementById('alerts').appendChild(d);
+  setTimeout(()=>d.remove(), 5000);
+}
+
+/* ════════════════════════════════════════════════════════════
+   CHARTS (Chart.js)
+════════════════════════════════════════════════════════════ */
+const chartDefaults = {
+  type:'line',
+  options:{
+    responsive:true, maintainAspectRatio:false, animation:{duration:300},
+    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
+    scales:{
+      x:{display:false},
+      y:{min:0,max:100,grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#5a6380',font:{size:10},callback:v=>v+'%'}},
+    },
+    elements:{point:{radius:0},line:{tension:.35}},
+  },
+};
+
+function makeChart(id, color, gradientColor){
+  const ctx  = document.getElementById(id).getContext('2d');
+  const grad = ctx.createLinearGradient(0,0,0,160);
+  grad.addColorStop(0, gradientColor+'44');
+  grad.addColorStop(1, gradientColor+'00');
+  return new Chart(ctx, {
+    ...chartDefaults,
+    data:{
+      labels   : timeLabels,
+      datasets : [{
+        data            : id==='cpuChart' ? cpuHistory : ramHistory,
+        borderColor     : color,
+        backgroundColor : grad,
+        borderWidth     : 2,
+        fill            : true,
+      }],
+    },
+  });
+}
+
+const cpuChart = makeChart('cpuChart', '#4f8ef7', '#4f8ef7');
+const ramChart = makeChart('ramChart', '#7c66f5', '#7c66f5');
+
+/* ════════════════════════════════════════════════════════════
+   WEBSOCKET
+════════════════════════════════════════════════════════════ */
+function connectWS(){
+  const proto = location.protocol==='https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+
+  ws.onopen = () => {
+    document.getElementById('wsDot').classList.add('connected');
+    document.getElementById('wsLabel').textContent = 'Conectado';
+    wsRetry = 1000;
+  };
+
+  ws.onmessage = (e) => {
+    let msg; try { msg = JSON.parse(e.data); } catch(_){ return; }
+    switch(msg.type){
+      case 'metrics': handleMetrics(msg); break;
+      case 'pm2_log': appendPm2Log(msg);  break;
+      case 'alert'  : notify(msg.message, msg.level || 'info'); break;
+    }
+  };
+
+  ws.onclose = () => {
+    document.getElementById('wsDot').classList.remove('connected');
+    document.getElementById('wsLabel').textContent = 'Reconectando...';
+    setTimeout(connectWS, Math.min(wsRetry *= 1.5, 15000));
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+/* ════════════════════════════════════════════════════════════
+   METRICS HANDLER
+════════════════════════════════════════════════════════════ */
+function handleMetrics({ sys, pm2 }){
+  if(!sys) return;
+
+  const now = fmt.date();
+  timeLabels.push(now); timeLabels.shift();
+
+  // CPU
+  cpuHistory.push(sys.cpu); cpuHistory.shift();
+  setRing('cpuRing', sys.cpu);
+  document.getElementById('cpuPct').textContent = fmt.pct(sys.cpu);
+  document.getElementById('cpuVal').textContent  = fmt.pct(sys.cpu);
+  document.getElementById('cpuLoad').textContent = `Load: ${sys.load.map(l=>l.toFixed(2)).join(' ')}`;
+
+  // RAM
+  const ramPct = sys.mem.pct;
+  ramHistory.push(ramPct); ramHistory.shift();
+  setRing('ramRing', ramPct);
+  document.getElementById('ramPct').textContent = fmt.pct(ramPct);
+  document.getElementById('ramVal').textContent  = `${fmt.bytes(sys.mem.used)} / ${fmt.bytes(sys.mem.total)}`;
+  document.getElementById('ramSub').textContent  = `${fmt.bytes(sys.mem.free)} livre`;
+
+  // Disk
+  setRing('diskRing', sys.disk.pct);
+  document.getElementById('diskPct').textContent = fmt.pct(sys.disk.pct);
+  document.getElementById('diskVal').textContent  = `${fmt.bytes(sys.disk.used)} / ${fmt.bytes(sys.disk.total)}`;
+  document.getElementById('diskSub').textContent  = `${fmt.bytes(sys.disk.free)} livre`;
+
+  // Uptime / ELD
+  document.getElementById('uptimeVal').textContent = fmt.time(sys.uptime);
+  document.getElementById('eldVal').textContent    = `ELD: ${sys.process.eld} ms | Heap: ${fmt.bytes(sys.process.heap)}`;
+
+  // Update charts
+  cpuChart.data.labels = [...timeLabels];
+  cpuChart.data.datasets[0].data = [...cpuHistory];
+  cpuChart.update('none');
+  ramChart.data.labels = [...timeLabels];
+  ramChart.data.datasets[0].data = [...ramHistory];
+  ramChart.update('none');
+
+  // PM2 data cached for table
+  if(pm2) { pm2Data = pm2; renderPm2Tables(); }
+}
+
+/* ════════════════════════════════════════════════════════════
+   PM2 TABLES
+════════════════════════════════════════════════════════════ */
+function statusBadge(s){ return `<span class="badge ${s||'stopped'}">${s||'?'}</span>`; }
+
+function renderPm2Tables(){
+  const rows = pm2Data.map(p => {
+    const memMb  = (p.mem/1024/1024).toFixed(1);
+    const memPct = p.memLimit ? Math.round(p.mem/1024/1024/p.memLimit*100) : 0;
+    const barCls = memPct>85?'crit':memPct>65?'warn':'ok';
+    return `<tr>
+      <td>${statusBadge(p.status)}</td>
+      <td style="font-weight:600">${p.name}</td>
+      <td>${p.cpu??0}%</td>
+      <td>
+        <div class="mem-bar-wrap">
+          ${memMb} MB
+          <div class="progress"><div class="progress-bar ${barCls}" style="width:${Math.min(memPct,100)}%"></div></div>
+        </div>
+      </td>
+      <td>${p.restarts}</td>
+      <td>${p.uptime?fmt.time((Date.now()-p.uptime)/1000):'—'}</td>
+    </tr>`;
+  }).join('');
+  const overviewBody = document.getElementById('overviewPm2Body');
+  if(overviewBody) overviewBody.innerHTML = rows || '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:16px">Nenhum processo</td></tr>';
+
+  // Full PM2 table
+  const fullRows = pm2Data.map(p => {
+    const memMb = (p.mem/1024/1024).toFixed(1);
+    return `<tr>
+      <td><span style="color:var(--muted)">#${p.id}</span></td>
+      <td style="font-weight:600">${p.name}</td>
+      <td>${statusBadge(p.status)}</td>
+      <td><span class="badge cluster">${p.mode||'fork'}</span></td>
+      <td>${p.cpu??0}%</td>
+      <td>${memMb} MB</td>
+      <td>${p.restarts}</td>
+      <td>${p.uptime?fmt.time((Date.now()-p.uptime)/1000):'—'}</td>
+      <td>
+        <div class="action-btns">
+          <button class="btn-action success" onclick="pm2Action('restart',${p.id},'${p.name}')">↻</button>
+          <button class="btn-action" onclick="pm2Action('reload',${p.id},'${p.name}')">⚡</button>
+          <button class="btn-action" onclick="pm2Action('stop',${p.id},'${p.name}')">⏸</button>
+          <button class="btn-action danger" onclick="pm2Action('delete',${p.id},'${p.name}')">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  const pm2Body = document.getElementById('pm2Body');
+  if(pm2Body) pm2Body.innerHTML = fullRows || '<tr><td colspan="9" style="color:var(--muted);text-align:center;padding:16px">Nenhum processo</td></tr>';
+}
+
+async function loadPM2(){
+  try {
+    const data = await api('/api/pm2/list');
+    pm2Data = data;
+    renderPm2Tables();
+  } catch(e){ notify('Erro ao carregar PM2: '+e.message,'danger'); }
+}
+
+async function pm2Action(action, id, name){
+  const labels = { restart:'reiniciando', reload:'recarregando', stop:'parando', delete:'deletando' };
+  notify(`PM2: ${labels[action]||action} ${name}...`, 'info');
+  try {
+    await api(`/api/pm2/${action}/${id}`, 'POST');
+    notify(`✓ ${name} ${action}`, 'info');
+    setTimeout(loadPM2, 800);
+  } catch(e){ notify(`Erro: ${e.message}`, 'danger'); }
+}
+
+/* ════════════════════════════════════════════════════════════
+   PM2 LOG STREAM
+════════════════════════════════════════════════════════════ */
+function subscribeLog(){
+  const name = document.getElementById('logProcessName').value.trim();
+  if(!name) return notify('Digite o nome do processo', 'info');
+  if(ws?.readyState === WebSocket.OPEN){
+    ws.send(JSON.stringify({ type:'subscribe_logs', name }));
+    notify(`Escutando logs de "${name}"`, 'info');
+  } else { notify('WebSocket não conectado', 'danger'); }
+}
+
+function appendPm2Log({ name, line }){
+  const box = document.getElementById('pm2LogBox');
+  const div = document.createElement('div');
+  div.style.cssText = 'padding:1px 0;border-bottom:1px solid rgba(255,255,255,.03)';
+  div.textContent = line;
+  box.appendChild(div);
+  if(box.children.length > 300) box.firstChild.remove();
+  box.scrollTop = box.scrollHeight;
+}
+
+function clearLog(){ document.getElementById('pm2LogBox').innerHTML = ''; }
+
+/* ════════════════════════════════════════════════════════════
+   SYSTEM LOGS
+════════════════════════════════════════════════════════════ */
+async function loadLog(type, btn){
+  currentLog = type;
+  if(btn){ document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
+  try {
+    const { lines } = await api(`/api/logs/${type}`);
+    const box = document.getElementById('logBox');
+    box.innerHTML = lines.map(l => {
+      const lvl = l.match(/\[(ERROR|WARN|INFO)/)?.[1] || '';
+      return `<div class="log-line ${lvl}">${escHtml(l)}</div>`;
+    }).join('');
+    box.scrollTop = box.scrollHeight;
+  } catch(e){ notify('Erro logs: '+e.message,'danger'); }
+}
+
+function reloadCurrentLog(){ loadLog(currentLog); }
+function clearLogBox(){ document.getElementById('logBox').innerHTML=''; }
+
+/* ════════════════════════════════════════════════════════════
+   FILE EDITOR
+════════════════════════════════════════════════════════════ */
+async function loadTree(){
+  const cont = document.getElementById('treeContent');
+  cont.innerHTML = '<div style="color:var(--muted)">Carregando...</div>';
+  try {
+    const tree = await api('/api/files/tree');
+    cont.innerHTML = '';
+    renderTree(tree, cont, 0);
+  } catch(e){ cont.innerHTML = `<div style="color:var(--danger)">${e.message}</div>`; }
+}
+
+function renderTree(items, container, depth){
+  for(const item of items){
+    const div = document.createElement('div');
+    div.className = 'tree-item';
+    div.style.setProperty('--depth', depth);
+    div.innerHTML = `<span class="ico">${item.type==='dir'?'📁':'📄'}</span>${escHtml(item.name)}`;
+
+    if(item.type==='file'){
+      div.onclick = () => openFile(item.path, div);
+    } else if(item.type==='dir' && item.children){
+      let open = false;
+      const children = document.createElement('div');
+      children.style.display = 'none';
+      renderTree(item.children, children, depth+1);
+      div.onclick = (e) => {
+        e.stopPropagation();
+        open = !open;
+        children.style.display = open ? '' : 'none';
+        div.querySelector('.ico').textContent = open ? '📂' : '📁';
+      };
+      container.appendChild(div);
+      container.appendChild(children);
+      continue;
+    }
+    container.appendChild(div);
+  }
+}
+
+async function openFile(filePath, el){
+  document.querySelectorAll('.tree-item').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  currentFile = filePath;
+  document.getElementById('editorMeta').textContent = `Editando: ${filePath}`;
+  document.getElementById('saveStatus').textContent = '';
+  const area = document.getElementById('codeEditor');
+  area.value = 'Carregando...';
+  try {
+    const { content } = await api(`/api/files/read?file=${encodeURIComponent(filePath)}`);
+    area.value = content;
+  } catch(e){ area.value = ''; notify('Erro ao abrir: '+e.message,'danger'); }
+}
+
+async function saveFile(){
+  if(!currentFile) return notify('Nenhum arquivo aberto', 'info');
+  const content = document.getElementById('codeEditor').value;
+  const status  = document.getElementById('saveStatus');
+  status.textContent = 'Salvando...';
+  try {
+    const { backup } = await api('/api/files/save','POST',{ file:currentFile, content });
+    status.textContent = `✓ Salvo — backup: ${backup}`;
+    status.style.color = 'var(--success)';
+    notify(`Arquivo salvo com backup`, 'info');
+  } catch(e){
+    status.textContent = '✗ Erro';
+    status.style.color = 'var(--danger)';
+    notify('Erro ao salvar: '+e.message,'danger');
+  }
+}
+
+function reloadFile(){
+  if(!currentFile) return;
+  openFile(currentFile, document.querySelector('.tree-item.selected'));
+}
+
+/* ════════════════════════════════════════════════════════════
+   GIT PULL
+════════════════════════════════════════════════════════════ */
+async function gitPull(){
+  const term = document.getElementById('terminal');
+  const btn  = document.getElementById('btnGitPull');
+  term.innerHTML = '';
+  btn.disabled   = true;
+  btn.textContent = '⏳ Executando...';
+
+  try {
+    const res = await fetch('/api/git/pull', { method:'POST', credentials:'same-origin' });
+    const reader = res.body.getReader();
+    const dec    = new TextDecoder();
+
+    while(true){
+      const { done, value } = await reader.read();
+      if(done) break;
+      const chunk = dec.decode(value);
+      // Parse SSE data: lines
+      chunk.split('\n').forEach(line => {
+        if(!line.startsWith('data:')) return;
+        const text = line.slice(5).trim();
+        if(!text) return;
+        const div = document.createElement('div');
+        if(text.includes('[ERROR]') || text.includes('[STDERR]')) div.className = 't-error';
+        else if(text.includes('[WARN]'))  div.className = 't-warn';
+        else if(text === '[DONE]')        div.className = 't-done';
+        div.textContent = text;
+        term.appendChild(div);
+        term.scrollTop = term.scrollHeight;
+      });
+    }
+  } catch(e){
+    term.innerHTML += `<div class="t-error">[ERROR] ${e.message}</div>`;
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '🚀 Executar Git Pull';
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   NAVIGATION
+════════════════════════════════════════════════════════════ */
+function showPanel(el){
+  const id = el.dataset.panel;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-'+id).classList.add('active');
+  // Lazy load
+  if(id==='logs')   loadLog(currentLog);
+  if(id==='editor') loadTree();
+  if(id==='pm2')    loadPM2();
+}
+
+/* ════════════════════════════════════════════════════════════
+   API HELPER
+════════════════════════════════════════════════════════════ */
+async function api(url, method='GET', body=null){
+  const opts = { method, credentials:'same-origin', headers:{'Content-Type':'application/json'} };
+  if(body) opts.body = JSON.stringify(body);
+  const res  = await fetch(url, opts);
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+/* ════════════════════════════════════════════════════════════
+   MISC
+════════════════════════════════════════════════════════════ */
+function escHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+async function logout(){
+  await fetch('/api/logout',{method:'POST',credentials:'same-origin'});
+  location.href='/';
+}
+
+// Clock
+setInterval(()=>{ document.getElementById('clock').textContent = new Date().toLocaleString('pt-BR'); }, 1000);
+
+/* ════════════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════════════ */
+(async()=>{
+  // Auth check
+  try {
+    const { authenticated } = await api('/api/check');
+    if(!authenticated){ location.href = '/'; return; }
+  } catch(_){ location.href='/'; return; }
+
+  connectWS();
+  loadPM2();
+})();
+</script>
+</body>
+</html>
